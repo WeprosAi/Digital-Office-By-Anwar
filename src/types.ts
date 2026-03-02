@@ -28,7 +28,24 @@ export interface Task {
   id: string;
   title: string;
   description: string;
-  status: 'queued' | 'in-progress' | 'complete';
+  status: 'queued' | 'in-progress' | 'complete' | 'on-hold';
+  priority: 'high' | 'medium' | 'low';
+  category: 'research' | 'development' | 'marketing' | 'scheduling' | 'security';
+  progress: number;
+  stage: 'initiating' | 'in-action' | 'wrapping';
+  duration: string;
+  cost: string;
+  assignedAgentIds: string[];
+  needsAttention: boolean;
+  highlights?: string;
+}
+
+export interface Meeting {
+  id: string;
+  title: string;
+  agenda: string;
+  dateTime: string;
+  agentIds: string[];
 }
 
 export interface MissionDocument {
@@ -46,6 +63,7 @@ export interface AppState {
   connections: Connection[];
   tasks: Task[];
   documents: MissionDocument[];
+  meetings: Meeting[];
   notes: string;
   theme: 'light' | 'dark';
 }

@@ -26,7 +26,22 @@ import {
   ChevronRight,
   Search,
   Bell,
-  RefreshCw
+  RefreshCw,
+  Activity,
+  Play,
+  Pause,
+  Calendar,
+  AlertTriangle,
+  CheckCircle,
+  Clock as ClockIcon,
+  DollarSign,
+  Timer,
+  ChevronDown,
+  ChevronUp,
+  Filter,
+  MoreVertical,
+  PhoneCall,
+  Users as UsersIcon
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from './lib/utils';
@@ -59,9 +74,64 @@ const INITIAL_STATE: AppState = {
     { id: '2', name: 'Local OpenClaw', ip: '127.0.0.1', port: '18789', token: 'local_token_xyz', isActive: false }
   ],
   tasks: [
-    { id: '1', title: 'Setup Infrastructure', description: 'Configure EC2 instances for OpenClaw', status: 'complete' },
-    { id: '2', title: 'Agent Training', description: 'Fine-tune Alpha on new datasets', status: 'in-progress' },
-    { id: '3', title: 'API Integration', description: 'Connect Gemini 1.5 Flash', status: 'queued' }
+    { 
+      id: '1', 
+      title: 'Setup Infrastructure', 
+      description: 'Configure EC2 instances for OpenClaw', 
+      status: 'complete',
+      priority: 'high',
+      category: 'security',
+      progress: 100,
+      stage: 'wrapping',
+      duration: '2h 15m',
+      cost: '$4.50',
+      assignedAgentIds: ['2'],
+      needsAttention: false
+    },
+    { 
+      id: '2', 
+      title: 'Agent Training', 
+      description: 'Fine-tune Alpha on new datasets', 
+      status: 'in-progress',
+      priority: 'medium',
+      category: 'research',
+      progress: 65,
+      stage: 'in-action',
+      duration: '4h 00m',
+      cost: '$12.00',
+      assignedAgentIds: ['1'],
+      needsAttention: false,
+      highlights: 'Processing dataset batch #42. Accuracy at 89%.'
+    },
+    { 
+      id: '3', 
+      title: 'API Integration', 
+      description: 'Connect Gemini 1.5 Flash', 
+      status: 'queued',
+      priority: 'low',
+      category: 'development',
+      progress: 0,
+      stage: 'initiating',
+      duration: '1h 30m',
+      cost: '$2.10',
+      assignedAgentIds: ['2'],
+      needsAttention: false
+    },
+    { 
+      id: '4', 
+      title: 'Market Expansion Analysis', 
+      description: 'Analyze potential for expansion in EMEA region', 
+      status: 'on-hold',
+      priority: 'high',
+      category: 'marketing',
+      progress: 45,
+      stage: 'in-action',
+      duration: '8h 00m',
+      cost: '$25.00',
+      assignedAgentIds: ['1'],
+      needsAttention: true,
+      highlights: 'Waiting for Q4 regional data verification.'
+    }
   ],
   documents: [
     { id: 'main', name: 'Main.pdf', content: 'This is the central instruction file. For Web Search tasks, refer to Mission_Briefing.pdf. For Scheduling tasks, refer to Agent_Protocols.docx. For Marketing tasks, refer to Market_Research_Q1.xlsx. For Group Work, refer to Agent_Protocols.docx.', type: 'PDF', size: '0.5 MB', updatedAt: new Date().toISOString() },
@@ -69,6 +139,7 @@ const INITIAL_STATE: AppState = {
     { id: '2', name: 'Agent_Protocols.docx', content: 'Agent Protocols: All agents must follow strict security guidelines. Group work requires synchronized status updates every 15 minutes.', type: 'DOC', size: '1.1 MB', updatedAt: new Date().toISOString() },
     { id: '3', name: 'Market_Research_Q1.xlsx', content: 'Market Research Q1: Data shows a 15% increase in demand for AI-driven automation tools.', type: 'XLS', size: '4.5 MB', updatedAt: new Date().toISOString() }
   ],
+  meetings: [],
   notes: 'Welcome to your Digital Office. Start by managing your agents and connections.',
   theme: 'light'
 };
@@ -168,7 +239,12 @@ export default function App() {
       return {
         ...INITIAL_STATE,
         ...parsed,
-        documents: parsed.documents || INITIAL_STATE.documents
+        documents: parsed.documents || INITIAL_STATE.documents,
+        meetings: parsed.meetings || INITIAL_STATE.meetings,
+        tasks: (parsed.tasks || INITIAL_STATE.tasks).map((t: any) => ({
+          ...INITIAL_STATE.tasks.find((it: any) => it.id === t.id),
+          ...t
+        }))
       };
     }
     return INITIAL_STATE;
@@ -227,6 +303,7 @@ export default function App() {
 
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { id: 'agents-in-action', label: 'Agents in Action', icon: Activity },
     { id: 'agents', label: 'Agents', icon: Users },
     { id: 'boardroom', label: 'Boardroom', icon: Handshake },
     { id: 'jobs', label: 'Jobs & Schedules', icon: Briefcase },
@@ -333,6 +410,7 @@ export default function App() {
               transition={{ duration: 0.2 }}
             >
               {activePage === 'dashboard' && <DashboardView state={state} />}
+              {activePage === 'agents-in-action' && <AgentsInActionView state={state} setState={setState} />}
               {activePage === 'agents' && <AgentsView state={state} setState={setState} />}
               {activePage === 'boardroom' && <BoardroomView />}
               {activePage === 'jobs' && <JobsView state={state} setState={setState} />}
@@ -609,7 +687,15 @@ function JobsView({ state, setState }: { state: AppState, setState: React.Dispat
         id: Date.now().toString(),
         title: newTask.title,
         description: newTask.description,
-        status: 'queued'
+        status: 'queued',
+        priority: 'medium',
+        category: 'development',
+        progress: 0,
+        stage: 'initiating',
+        duration: '1h 00m',
+        cost: '$0.00',
+        assignedAgentIds: [],
+        needsAttention: false
       };
       setState(prev => ({ ...prev, tasks: [...prev.tasks, task] }));
       setIsAdding(false);
@@ -627,6 +713,7 @@ function JobsView({ state, setState }: { state: AppState, setState: React.Dispat
   const columns: { id: Task['status'], label: string, icon: any }[] = [
     { id: 'queued', label: 'Queued', icon: Clock },
     { id: 'in-progress', label: 'In Progress', icon: AlertCircle },
+    { id: 'on-hold', label: 'On Hold', icon: Pause },
     { id: 'complete', label: 'Complete', icon: CheckCircle2 },
   ];
 
@@ -1385,6 +1472,460 @@ function IntelView({ state, setState }: { state: AppState, setState: React.Dispa
           </Card>
         ))}
       </div>
+    </div>
+  );
+}
+
+function AgentsInActionView({ state, setState }: { state: AppState, setState: React.Dispatch<React.SetStateAction<AppState>> }) {
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [filterAgent, setFilterAgent] = useState('all');
+  const [filterCategory, setFilterCategory] = useState('all');
+  const [filterPriority, setFilterPriority] = useState('all');
+  const [isDiscussionOpen, setIsDiscussionOpen] = useState(false);
+  const [isMeetingModalOpen, setIsMeetingModalOpen] = useState(false);
+  const [meetingData, setMeetingData] = useState({ title: '', agenda: '', dateTime: '', agentIds: [] as string[] });
+
+  const selectedTask = state.tasks.find(t => t.id === selectedTaskId);
+
+  const stats = {
+    ongoing: state.tasks.filter(t => t.status === 'in-progress').length,
+    queue: state.tasks.filter(t => t.status === 'queued').length,
+    onHold: state.tasks.filter(t => t.status === 'on-hold').length,
+    completed: state.tasks.filter(t => t.status === 'complete').length,
+    attention: state.tasks.filter(t => t.needsAttention).length
+  };
+
+  const filteredTasks = state.tasks.filter(t => {
+    if (filterAgent !== 'all' && !t.assignedAgentIds.includes(filterAgent)) return false;
+    if (filterCategory !== 'all' && t.category !== filterCategory) return false;
+    if (filterPriority !== 'all' && t.priority !== filterPriority) return false;
+    return true;
+  });
+
+  const handleStatusChange = (taskId: string, status: Task['status']) => {
+    setState(prev => ({
+      ...prev,
+      tasks: prev.tasks.map(t => t.id === taskId ? { ...t, status } : t)
+    }));
+  };
+
+  const handleDeleteTask = (taskId: string) => {
+    if (confirm('Delete this task?')) {
+      setState(prev => ({
+        ...prev,
+        tasks: prev.tasks.filter(t => t.id !== taskId)
+      }));
+      if (selectedTaskId === taskId) setSelectedTaskId(null);
+    }
+  };
+
+  const handleScheduleMeeting = () => {
+    if (!meetingData.title || !meetingData.dateTime) return;
+    const newMeeting = { ...meetingData, id: Date.now().toString() };
+    setState(prev => ({ ...prev, meetings: [...prev.meetings, newMeeting] }));
+    setIsMeetingModalOpen(false);
+    setMeetingData({ title: '', agenda: '', dateTime: '', agentIds: [] });
+    alert('Board meeting scheduled successfully.');
+  };
+
+  return (
+    <div className="space-y-10 pb-20">
+      {/* Top Layer: Status Circles */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-6">
+        {[
+          { label: 'Ongoing', count: stats.ongoing, color: 'bg-emerald-500', icon: Activity },
+          { label: 'Queue', count: stats.queue, color: 'bg-amber-500', icon: ClockIcon },
+          { label: 'On Hold', count: stats.onHold, color: 'bg-orange-500', icon: Pause },
+          { label: 'Completed', count: stats.completed, color: 'bg-indigo-500', icon: CheckCircle },
+          { label: 'Attention', count: stats.attention, color: 'bg-red-500', icon: AlertTriangle }
+        ].map((stat, i) => (
+          <motion.div
+            key={i}
+            whileHover={{ scale: 1.05 }}
+            className="bg-white dark:bg-dark-surface p-6 rounded-3xl shadow-sm border border-black/5 dark:border-white/10 flex flex-col items-center text-center gap-2 group cursor-default"
+          >
+            <div className={cn("w-12 h-12 rounded-full flex items-center justify-center text-white mb-2 shadow-lg", stat.color)}>
+              <stat.icon size={24} />
+            </div>
+            <span className="text-3xl font-bold tracking-tighter">{stat.count}</span>
+            <span className="text-[10px] font-bold uppercase tracking-widest text-black/40 dark:text-white/40">{stat.label}</span>
+          </motion.div>
+        ))}
+      </div>
+
+      {/* Filter Rail */}
+      <div className="flex flex-wrap items-center gap-4 bg-white/50 dark:bg-white/5 p-4 rounded-2xl backdrop-blur-sm">
+        <div className="flex items-center gap-2 text-sm font-bold text-black/40 dark:text-white/40 mr-2">
+          <Filter size={16} /> FILTERS
+        </div>
+        <select 
+          value={filterAgent} 
+          onChange={e => setFilterAgent(e.target.value)}
+          className="bg-white dark:bg-dark-surface border border-black/10 dark:border-white/10 rounded-xl px-4 py-2 text-sm outline-none focus:border-light-accent dark:focus:border-dark-accent transition-all"
+        >
+          <option value="all">All Agents</option>
+          {state.agents.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+        </select>
+        <select 
+          value={filterCategory} 
+          onChange={e => setFilterCategory(e.target.value)}
+          className="bg-white dark:bg-dark-surface border border-black/10 dark:border-white/10 rounded-xl px-4 py-2 text-sm outline-none focus:border-light-accent dark:focus:border-dark-accent transition-all"
+        >
+          <option value="all">All Categories</option>
+          <option value="research">Research</option>
+          <option value="development">Development</option>
+          <option value="marketing">Marketing</option>
+          <option value="scheduling">Scheduling</option>
+          <option value="security">Security</option>
+        </select>
+        <select 
+          value={filterPriority} 
+          onChange={e => setFilterPriority(e.target.value)}
+          className="bg-white dark:bg-dark-surface border border-black/10 dark:border-white/10 rounded-xl px-4 py-2 text-sm outline-none focus:border-light-accent dark:focus:border-dark-accent transition-all"
+        >
+          <option value="all">All Priorities</option>
+          <option value="high">High</option>
+          <option value="medium">Medium</option>
+          <option value="low">Low</option>
+        </select>
+        <Button onClick={() => setIsMeetingModalOpen(true)} variant="secondary" className="ml-auto flex items-center gap-2">
+          <Calendar size={18} /> Board Meeting
+        </Button>
+      </div>
+
+      {/* Action Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        {filteredTasks.slice(0, 3).map((task) => (
+          <motion.div
+            key={task.id}
+            layoutId={task.id}
+            onClick={() => setSelectedTaskId(task.id)}
+            className={cn(
+              "group relative bg-white dark:bg-dark-surface rounded-3xl p-6 shadow-sm border-2 transition-all cursor-pointer",
+              selectedTaskId === task.id ? "border-light-accent dark:border-dark-accent" : "border-transparent hover:border-black/10 dark:hover:border-white/10"
+            )}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <div className={cn(
+                "px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider",
+                task.priority === 'high' ? "bg-red-500/10 text-red-500" : 
+                task.priority === 'medium' ? "bg-amber-500/10 text-amber-500" : "bg-emerald-500/10 text-emerald-500"
+              )}>
+                {task.priority} Priority
+              </div>
+              {task.needsAttention && (
+                <div className="w-2 h-2 rounded-full bg-red-500 animate-ping" />
+              )}
+            </div>
+            <h5 className="font-bold text-lg mb-2 group-hover:text-light-accent dark:group-hover:text-dark-accent transition-colors">{task.title}</h5>
+            <p className="text-xs text-black/60 dark:text-white/60 line-clamp-2 mb-6">{task.description}</p>
+            
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-black/40 dark:text-white/40">
+                <span>Progress</span>
+                <span>{task.progress}%</span>
+              </div>
+              <div className="h-1.5 w-full bg-black/5 dark:bg-white/5 rounded-full overflow-hidden">
+                <motion.div 
+                  initial={{ width: 0 }}
+                  animate={{ width: `${task.progress}%` }}
+                  className="h-full bg-emerald-500"
+                />
+              </div>
+            </div>
+
+            <div className="mt-6 flex items-center justify-between">
+              <div className="flex -space-x-2">
+                {task.assignedAgentIds.map(id => {
+                  const agent = state.agents.find(a => a.id === id);
+                  return (
+                    <div key={id} title={agent?.name} className="w-8 h-8 rounded-full border-2 border-white dark:border-dark-surface bg-light-accent dark:bg-dark-accent flex items-center justify-center text-[10px] font-bold text-white">
+                      {agent?.name[0]}
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="flex items-center gap-2 text-[10px] font-bold text-black/40 dark:text-white/40 uppercase">
+                <ClockIcon size={12} /> {task.duration}
+              </div>
+            </div>
+          </motion.div>
+        ))}
+      </div>
+
+      {/* Big Window: Command Theater */}
+      <AnimatePresence>
+        {selectedTask && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="bg-white dark:bg-dark-surface rounded-[40px] p-10 shadow-2xl border border-black/5 dark:border-white/10 relative overflow-hidden"
+          >
+            {/* Background Glow */}
+            <div className="absolute top-0 right-0 w-96 h-96 bg-light-accent/5 dark:bg-dark-accent/5 blur-[100px] -z-10" />
+            
+            <div className="flex flex-col lg:flex-row gap-12">
+              <div className="flex-1 space-y-8">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <div className="flex items-center gap-3 mb-2">
+                      <span className="px-3 py-1 bg-black/5 dark:bg-white/5 rounded-full text-[10px] font-bold uppercase tracking-widest text-black/40 dark:text-white/40">
+                        {selectedTask.category}
+                      </span>
+                      <span className={cn(
+                        "px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest",
+                        selectedTask.status === 'in-progress' ? "bg-emerald-500/10 text-emerald-500" :
+                        selectedTask.status === 'on-hold' ? "bg-orange-500/10 text-orange-500" : "bg-indigo-500/10 text-indigo-500"
+                      )}>
+                        {selectedTask.status.replace('-', ' ')}
+                      </span>
+                    </div>
+                    <h2 className="text-4xl font-bold tracking-tighter">{selectedTask.title}</h2>
+                  </div>
+                  <div className="flex gap-2">
+                    <button onClick={() => handleDeleteTask(selectedTask.id)} className="p-3 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-2xl text-red-500 transition-all">
+                      <Trash2 size={24} />
+                    </button>
+                    <button onClick={() => setSelectedTaskId(null)} className="p-3 hover:bg-black/5 dark:hover:bg-white/5 rounded-2xl transition-all">
+                      <X size={24} />
+                    </button>
+                  </div>
+                </div>
+
+                <p className="text-lg text-black/60 dark:text-white/60 leading-relaxed">{selectedTask.description}</p>
+
+                {/* Stages */}
+                <div className="grid grid-cols-3 gap-4">
+                  {[
+                    { label: 'Initiating', stage: 'initiating', icon: Play },
+                    { label: 'In Action', stage: 'in-action', icon: Activity },
+                    { label: 'Wrapping', stage: 'wrapping', icon: CheckCircle }
+                  ].map((s, i) => (
+                    <div key={i} className={cn(
+                      "p-4 rounded-2xl border flex flex-col items-center gap-2 transition-all",
+                      selectedTask.stage === s.stage 
+                        ? "bg-light-accent/10 dark:bg-dark-accent/10 border-light-accent dark:border-dark-accent text-light-accent dark:text-dark-accent" 
+                        : "bg-black/5 dark:bg-white/5 border-transparent opacity-40"
+                    )}>
+                      <s.icon size={20} />
+                      <span className="text-[10px] font-bold uppercase tracking-widest">{s.label}</span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Highlights Accordion */}
+                <div className="bg-black/5 dark:bg-white/5 rounded-3xl p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h6 className="font-bold text-sm uppercase tracking-widest flex items-center gap-2">
+                      <StickyNote size={16} /> Live Highlights
+                    </h6>
+                  </div>
+                  <p className="text-sm italic text-black/60 dark:text-white/60">
+                    {selectedTask.highlights || "No active highlights for this stage."}
+                  </p>
+                </div>
+              </div>
+
+              <div className="w-full lg:w-80 space-y-6">
+                <Card className="bg-black/5 dark:bg-white/5 border-none shadow-none p-8 space-y-6">
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-black/40 dark:text-white/40">Duration</span>
+                      <span className="font-bold flex items-center gap-2"><Timer size={14} /> {selectedTask.duration}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-black/40 dark:text-white/40">Est. Cost</span>
+                      <span className="font-bold flex items-center gap-2 text-emerald-500"><DollarSign size={14} /> {selectedTask.cost}</span>
+                    </div>
+                  </div>
+
+                  <div className="pt-6 border-t border-black/5 dark:border-white/10">
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-black/40 dark:text-white/40 block mb-4">Assigned Team</span>
+                    <div className="space-y-3">
+                      {selectedTask.assignedAgentIds.map(id => {
+                        const agent = state.agents.find(a => a.id === id);
+                        return (
+                          <div key={id} className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-full bg-light-accent dark:bg-dark-accent flex items-center justify-center text-[10px] font-bold text-white">
+                              {agent?.name[0]}
+                            </div>
+                            <span className="font-bold text-sm">{agent?.name}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="pt-6 space-y-3">
+                    <Button 
+                      onClick={() => handleStatusChange(selectedTask.id, selectedTask.status === 'in-progress' ? 'on-hold' : 'in-progress')}
+                      className="w-full flex items-center justify-center gap-2 py-4"
+                      variant={selectedTask.status === 'in-progress' ? 'secondary' : 'primary'}
+                    >
+                      {selectedTask.status === 'in-progress' ? <><Pause size={18} /> Pause Job</> : <><Play size={18} /> Resume Job</>}
+                    </Button>
+                    <Button 
+                      onClick={() => setIsDiscussionOpen(true)}
+                      variant="success"
+                      className="w-full flex items-center justify-center gap-2 py-4"
+                    >
+                      <PhoneCall size={18} /> Call for Discussion
+                    </Button>
+                  </div>
+                </Card>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Job Showcase Carousel */}
+      <div className="space-y-6">
+        <h4 className="text-xl font-bold tracking-tighter flex items-center gap-2">
+          <Activity size={20} className="text-light-accent dark:text-dark-accent" /> Job Showcase
+        </h4>
+        <div className="flex gap-6 overflow-x-auto pb-6 scrollbar-hide">
+          {state.tasks.filter(t => t.status === 'complete' || t.status === 'in-progress').map((task) => (
+            <Card key={task.id} className="min-w-[300px] bg-white/50 dark:bg-white/5 border-none shadow-none hover:bg-white dark:hover:bg-white/10 transition-all">
+              <div className="flex items-center justify-between mb-4">
+                <span className="text-[10px] font-bold uppercase tracking-widest text-black/40 dark:text-white/40">{task.category}</span>
+                <CheckCircle size={14} className={task.status === 'complete' ? "text-emerald-500" : "text-black/20 dark:text-white/20"} />
+              </div>
+              <h6 className="font-bold mb-1 truncate">{task.title}</h6>
+              <p className="text-[10px] text-black/40 dark:text-white/40">Completed by {state.agents.find(a => a.id === task.assignedAgentIds[0])?.name}</p>
+            </Card>
+          ))}
+          {state.tasks.length === 0 && (
+            <div className="w-full py-10 text-center text-black/40 dark:text-white/40 italic">
+              No jobs currently in the showcase.
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Discussion Chat Window */}
+      <AnimatePresence>
+        {isDiscussionOpen && (
+          <motion.div
+            initial={{ x: 400 }}
+            animate={{ x: 0 }}
+            exit={{ x: 400 }}
+            className="fixed top-0 right-0 h-full w-96 bg-white dark:bg-dark-surface shadow-2xl z-[100] border-l border-black/5 dark:border-white/10 flex flex-col"
+          >
+            <div className="p-6 border-b border-black/5 dark:border-white/10 flex items-center justify-between bg-light-accent dark:bg-dark-accent text-white">
+              <div className="flex items-center gap-3">
+                <PhoneCall size={20} />
+                <div>
+                  <h6 className="font-bold text-sm">Mission Discussion</h6>
+                  <p className="text-[10px] opacity-80">Agent: {state.agents.find(a => a.id === selectedTask?.assignedAgentIds[0])?.name}</p>
+                </div>
+              </div>
+              <button onClick={() => setIsDiscussionOpen(false)} className="p-2 hover:bg-white/10 rounded-lg">
+                <X size={20} />
+              </button>
+            </div>
+            <div className="flex-1 p-6 overflow-y-auto space-y-4">
+              <div className="bg-black/5 dark:bg-white/5 p-4 rounded-2xl text-xs">
+                <strong>System:</strong> Task "{selectedTask?.title}" has been paused for discussion.
+              </div>
+              <div className="bg-light-accent/10 dark:bg-dark-accent/10 p-4 rounded-2xl text-xs text-right ml-8">
+                <strong>Admin:</strong> Alpha, I need a status update on the EMEA data. Why is it on hold?
+              </div>
+              <div className="bg-black/5 dark:bg-white/5 p-4 rounded-2xl text-xs mr-8">
+                <strong>Alpha:</strong> Admin, the regional servers are experiencing latency. I am waiting for the Q4 verification batch. Should I bypass and use Q3 estimates?
+              </div>
+            </div>
+            <div className="p-6 border-t border-black/5 dark:border-white/10">
+              <div className="flex gap-2">
+                <input 
+                  type="text" 
+                  placeholder="Type instruction..." 
+                  className="flex-1 bg-black/5 dark:bg-white/5 border-none rounded-xl px-4 py-2 text-sm outline-none"
+                />
+                <Button className="px-4"><ChevronRight size={18} /></Button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Boardroom Scheduler Modal */}
+      <AnimatePresence>
+        {isMeetingModalOpen && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="bg-white dark:bg-dark-surface rounded-[32px] p-10 max-w-lg w-full shadow-2xl space-y-8"
+            >
+              <div className="flex items-center justify-between">
+                <h4 className="text-2xl font-bold tracking-tighter flex items-center gap-3">
+                  <Handshake className="text-light-accent dark:text-dark-accent" /> Schedule Board Meeting
+                </h4>
+                <button onClick={() => setIsMeetingModalOpen(false)} className="p-2 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg">
+                  <X size={20} />
+                </button>
+              </div>
+
+              <div className="space-y-6">
+                <Input 
+                  label="Meeting Title" 
+                  value={meetingData.title} 
+                  onChange={v => setMeetingData({ ...meetingData, title: v })} 
+                  placeholder="e.g. Q4 Strategy Alignment"
+                />
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-semibold uppercase tracking-wider text-black/50 dark:text-white/50 px-1">Meeting Agenda</label>
+                  <textarea 
+                    className="w-full px-4 py-2.5 rounded-xl bg-black/5 dark:bg-white/5 border border-transparent focus:border-light-accent dark:focus:border-dark-accent outline-none transition-all text-black dark:text-white min-h-[100px]"
+                    value={meetingData.agenda}
+                    onChange={e => setMeetingData({ ...meetingData, agenda: e.target.value })}
+                    placeholder="Describe the goals of this meeting..."
+                  />
+                </div>
+                <Input 
+                  label="Date & Time" 
+                  type="datetime-local"
+                  value={meetingData.dateTime} 
+                  onChange={v => setMeetingData({ ...meetingData, dateTime: v })} 
+                />
+                
+                <div className="space-y-3">
+                  <label className="text-xs font-semibold uppercase tracking-wider text-black/50 dark:text-white/50 px-1">Invite Agents</label>
+                  <div className="flex flex-wrap gap-2">
+                    {state.agents.map(agent => (
+                      <button
+                        key={agent.id}
+                        onClick={() => {
+                          const ids = meetingData.agentIds.includes(agent.id)
+                            ? meetingData.agentIds.filter(id => id !== agent.id)
+                            : [...meetingData.agentIds, agent.id];
+                          setMeetingData({ ...meetingData, agentIds: ids });
+                        }}
+                        className={cn(
+                          "px-4 py-2 rounded-xl text-xs font-bold transition-all",
+                          meetingData.agentIds.includes(agent.id)
+                            ? "bg-light-accent dark:bg-dark-accent text-white"
+                            : "bg-black/5 dark:bg-white/5 text-black/40 dark:text-white/40 hover:bg-black/10 dark:hover:bg-white/10"
+                        )}
+                      >
+                        {agent.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-4 pt-4">
+                <Button variant="ghost" onClick={() => setIsMeetingModalOpen(false)} className="flex-1 py-4">Cancel</Button>
+                <Button onClick={handleScheduleMeeting} className="flex-1 py-4">Schedule Meeting</Button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
